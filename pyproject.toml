@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ml_utils"
-version = "0.0.1"
+version = "1.0"
 dependencies = [
     "numpy>=1.23",
     "pandas>=1.5",

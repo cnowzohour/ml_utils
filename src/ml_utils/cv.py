@@ -7,7 +7,7 @@ import copy
 from typing import Callable, List, Optional
 
 
-def stepwise_cv(df: pd.DataFrame, train_fn: Callable, predict_fn: Callable, eval_fn: Callable, conf: dict, forward: bool=True, start_feats: List=[], start_score: Optional[float]=None, criterion: str="roc_auc"):
+def stepwise_cv(df: pd.DataFrame, train_fn: Callable, predict_fn: Callable, eval_fn: Callable, conf: dict, forward: bool=True, start_feats: List=[], start_score: Optional[float]=None, criterion: str="roc_auc", stop_early: bool=True):
     print(f"Stepwise CV: forward={forward}, start_feats={start_feats} (n={len(start_feats)}), start_score={start_score}")
     if start_score is None:
         if len(start_feats) == 0:
@@ -23,17 +23,18 @@ def stepwise_cv(df: pd.DataFrame, train_fn: Callable, predict_fn: Callable, eval
     candidate_feats = [ f for f in conf["feats"] if f not in start_feats ] if forward else start_feats.copy()
     candidate_feat_sets = []
     scores = []
-    for candidate_feat in candidate_feats:
-        print(f"Evaluating candidate_feat: {candidate_feat}...")
-        conf_ = copy.deepcopy(conf)
-        if forward:
-            conf_["feats"] = start_feats + [candidate_feat]
-        else:
-            conf_["feats"] = [f for f in start_feats if f != candidate_feat]
-        candidate_feat_sets.append(conf_["feats"])
-        cv_res = cross_validation(df, train_fn, predict_fn, eval_fn, conf_)
-        scores.append(cv_res[criterion].values[0])
-        print(f"  score: {scores[-1]}")
+    if len(candidate_feats) > 0:
+        for candidate_feat in candidate_feats:
+            print(f"Evaluating candidate_feat: {candidate_feat}...")
+            conf_ = copy.deepcopy(conf)
+            if forward:
+                conf_["feats"] = start_feats + [candidate_feat]
+            else:
+                conf_["feats"] = [f for f in start_feats if f != candidate_feat]
+            candidate_feat_sets.append(conf_["feats"])
+            cv_res = cross_validation(df, train_fn, predict_fn, eval_fn, conf_)
+            scores.append(cv_res[criterion].values[0])
+            print(f"  score: {scores[-1]}")
 
     res_this = [{
         "feats": start_feats,
@@ -43,7 +44,7 @@ def stepwise_cv(df: pd.DataFrame, train_fn: Callable, predict_fn: Callable, eval
     }]
 
     best_i = np.argmax(scores)
-    if (scores[best_i] > start_score) and (len(candidate_feats) > 1):
+    if (~stop_early | (scores[best_i] > start_score)) and (len(candidate_feats) > 0):
         res = stepwise_cv(
             df,
             train_fn,

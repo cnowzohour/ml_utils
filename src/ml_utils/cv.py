@@ -19,6 +19,41 @@ def stepwise_cv(
     criterion: str = "roc_auc",
     stop_early: bool = True,
 ):
+    """
+    Perform stepwise feature selection using cross-validation.
+
+    Iteratively adds (forward=True) or removes (forward=False) single features,
+    selecting at each step the feature set that maximizes the specified
+    evaluation criterion computed via cross-validation.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data; must be compatible with `cross_validation`.
+    train_fn, predict_fn, eval_fn : Callable
+        Training, prediction, and evaluation functions used by
+        `cross_validation`.
+    conf : dict
+        Configuration dictionary passed to `cross_validation`. Must contain
+        a ``"feats"`` key listing available features.
+    forward : bool, default True
+        If True, perform forward selection; otherwise perform backward elimination.
+    start_feats : list, default []
+        Initial feature set.
+    start_score : float or None, default None
+        Baseline score for `start_feats`. If None, it is computed automatically.
+    criterion : str, default "roc_auc"
+        Metric name used to compare feature sets.
+    stop_early : bool, default True
+        If True, stop when no improvement over `start_score` is achieved.
+
+    Returns
+    -------
+    list of dict
+        Sequential record of each step, including evaluated features,
+        candidate features, and corresponding scores.
+    """
+
     print(
         f"Stepwise CV: forward={forward}, start_feats={start_feats} (n={len(start_feats)}), start_score={start_score}"
     )
@@ -95,6 +130,35 @@ def grid_search_cv(
     param_grid: dict,
     pred_param_grid: Optional[dict] = None,
 ):
+    """
+    Perform grid search over model hyperparameters using cross-validation.
+
+    Evaluates all combinations in `param_grid` by updating `conf["params"]`
+    and running `cross_validation` for each setting.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data; must be compatible with `cross_validation`.
+    train_fn, predict_fn, eval_fn : Callable
+        Training, prediction, and evaluation functions used by
+        `cross_validation`.
+    conf : dict
+        Base configuration dictionary passed to `cross_validation`.
+        Must contain a ``"params"`` key.
+    param_grid : dict
+        Mapping of parameter names to lists of values to evaluate.
+    pred_param_grid : dict or None, optional
+        Optional grid of prediction-time parameters passed through to
+        `cross_validation`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenated evaluation results for all parameter combinations,
+        with one column per tuned parameter.
+    """
+
     param_names = list(param_grid.keys())
     param_values = list(param_grid.values())
     all_param_combinations = list(product(*param_values))
@@ -124,6 +188,33 @@ def cross_validation(
     conf: dict,
     pred_param_grid: Optional[dict] = None,
 ):
+    """
+    Run cross-validation and aggregate evaluation metrics across folds.
+
+    Trains a model on all but one fold, evaluates on the held-out fold, and
+    repeats for all folds defined in ``df.fold``. Optionally evaluates multiple
+    prediction-time parameter values (e.g., number of trees) without retraining.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input data containing a ``fold`` column defining CV splits.
+    train_fn, predict_fn, eval_fn : Callable
+        Training, prediction, and evaluation functions.
+    conf : dict
+        Configuration dictionary passed to training, prediction, and evaluation.
+        Must include a ``"target"`` key.
+    pred_param_grid : dict or None, optional
+        Optional grid of a single prediction-time parameter to evaluate
+        without retraining.
+
+    Returns
+    -------
+    pd.DataFrame
+        Evaluation results aggregated across folds, including per-fold
+        metrics and overall metrics, with one row per prediction-time
+        parameter value (if any).
+    """
 
     # pred_param_grid is only used at pred time (eg for XGB number of trees)
     assert (pred_param_grid is None) or (

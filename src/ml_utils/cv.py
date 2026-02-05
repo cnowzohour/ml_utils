@@ -295,11 +295,16 @@ def train_xgb(df: pd.DataFrame, conf: dict):
     import xgboost as xgb
 
     feats = conf["feats"]
-    X = df[feats].values
-    y = df[conf["target"]].values
+    X = df[feats]
+    y = df[conf["target"]]
     fit = xgb.train(
         params=conf["params"],
-        dtrain=xgb.DMatrix(X, label=y, feature_names=feats),
+        dtrain=xgb.DMatrix(
+            X,
+            label=y,
+            feature_names=feats,
+            enable_categorical=conf.get("enable_categorical", False),
+        ),
         num_boost_round=conf["n_rounds"],
     )
     return fit
@@ -312,7 +317,12 @@ def predict_xgb(fit, df: pd.DataFrame, conf: dict):
     X = df[feats].values
     n_trees = conf["n_trees"] if "n_trees" in conf else conf["n_rounds"]
     pred = fit.predict(
-        xgb.DMatrix(X, feature_names=feats), iteration_range=[0, n_trees]
+        xgb.DMatrix(
+            X,
+            feature_names=feats,
+            enable_categorical=conf.get("enable_categorical", False),
+        ),
+        iteration_range=[0, n_trees],
     )
     return pred
 

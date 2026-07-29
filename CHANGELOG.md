@@ -7,6 +7,7 @@
 
 ### Added
 - `tests/test_cv.py`: tests for `cross_validation` covering output shape, fold exclusion, and the `pred_param_name`/`pred_param_values` sweep (including the no-sweep default path)
+- `tests/test_grid_search_cv.py`: tests for `grid_search_cv` covering full combination coverage, params reaching `train_fn`, base `conf` not being mutated, and combining the grid with a `pred_param` sweep
 - `pytest` as an optional `test` dependency; `pythonpath = ["src"]` pytest config so tests import `ml_utils` without an editable install
 
 ## [1.0.2] - 2026-07-29

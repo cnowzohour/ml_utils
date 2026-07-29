@@ -57,7 +57,8 @@ def feature_sweep_plot(
         df_const_[feat] = np.linspace(vmin, vmax, len(df_const))
         preds_pdp_ = pred_fn(df_const_)
         if plot_logits:
-            logits = np.log(preds_pdp_ / (1 - preds_pdp_))
+            preds_clipped = np.clip(preds_pdp_, 1e-7, 1 - 1e-7)
+            logits = np.log(preds_clipped / (1 - preds_clipped))
             axs[i].plot(df_const_[feat], logits)
             ylabel = "Logits"
         else:

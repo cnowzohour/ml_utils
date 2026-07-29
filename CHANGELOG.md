@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.2] - 2026-07-29
 
 ### Fixed
 - `stepwise_cv`: changed `start_feats` default from `[]` to `None` to avoid mutable default argument

@@ -131,7 +131,8 @@ def grid_search_cv(
     eval_fn: Callable,
     conf: dict,
     param_grid: dict,
-    pred_param_grid: Optional[dict] = None,
+    pred_param_name: Optional[str] = None,
+    pred_param_values: Optional[List] = None,
 ):
     """
     Perform grid search over model hyperparameters using cross-validation.
@@ -151,9 +152,11 @@ def grid_search_cv(
         Must contain a ``"params"`` key.
     param_grid : dict
         Mapping of parameter names to lists of values to evaluate.
-    pred_param_grid : dict or None, optional
-        Optional grid of prediction-time parameters passed through to
-        `cross_validation`.
+    pred_param_name : str or None, optional
+        Name of a prediction-time parameter to evaluate without retraining
+        (e.g. ``"n_trees"``). Must be provided together with `pred_param_values`.
+    pred_param_values : list or None, optional
+        Values to evaluate for `pred_param_name`.
 
     Returns
     -------
@@ -173,7 +176,8 @@ def grid_search_cv(
         conf_["params"].update(params)
         print(f"Evaluating params: {params}...")
         df_eval = cross_validation(
-            df, train_fn, predict_fn, eval_fn, conf_, pred_param_grid=pred_param_grid
+            df, train_fn, predict_fn, eval_fn, conf_,
+            pred_param_name=pred_param_name, pred_param_values=pred_param_values,
         )
         for name in param_names:
             df_eval[name] = params[name]
@@ -189,7 +193,8 @@ def cross_validation(
     predict_fn: Callable,
     eval_fn: Callable,
     conf: dict,
-    pred_param_grid: Optional[dict] = None,
+    pred_param_name: Optional[str] = None,
+    pred_param_values: Optional[List] = None,
 ):
     """
     Run cross-validation and aggregate evaluation metrics across folds.
@@ -207,9 +212,12 @@ def cross_validation(
     conf : dict
         Configuration dictionary passed to training, prediction, and evaluation.
         Must include a ``"target"`` key.
-    pred_param_grid : dict or None, optional
-        Optional grid of a single prediction-time parameter to evaluate
-        without retraining.
+    pred_param_name : str or None, optional
+        Name of a prediction-time parameter to sweep without retraining
+        (e.g. ``"n_trees"`` for XGBoost). Must be provided together with
+        `pred_param_values`.
+    pred_param_values : list or None, optional
+        Values to evaluate for `pred_param_name`.
 
     Returns
     -------
@@ -219,12 +227,8 @@ def cross_validation(
         parameter value (if any).
     """
 
-    # pred_param_grid is only used at pred time (eg for XGB number of trees)
-    assert (pred_param_grid is None) or (
-        len(pred_param_grid) <= 1
-    ), "Only one eval param supported currently"
-    pred_param_name = list(pred_param_grid.keys())[0] if pred_param_grid else None
-    pred_param_values = pred_param_grid[pred_param_name] if pred_param_grid else [None]
+    if pred_param_values is None:
+        pred_param_values = [None]
 
     # Prepare 2d lists of test and eval dfs: outer list over folds, inner list over eval
     # param (if any)

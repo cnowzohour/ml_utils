@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- `cross_validation`: fixed `NameError` on every call caused by a leftover reference to `pred_param_grid` (removed in the flat-params refactor); now correctly guards on `pred_param_name is not None`
+
 ## [1.0.2] - 2026-07-29
 
 ### Fixed

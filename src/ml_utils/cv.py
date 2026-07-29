@@ -248,7 +248,7 @@ def cross_validation(
 
         for pred_param_value in pred_param_values:
             conf_ = copy.deepcopy(conf)
-            if pred_param_grid:
+            if pred_param_name is not None:
                 conf_[pred_param_name] = pred_param_value
             pred = predict_fn(fit, df_test, conf_)
 

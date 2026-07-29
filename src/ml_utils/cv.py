@@ -14,7 +14,7 @@ def stepwise_cv(
     eval_fn: Callable,
     conf: dict,
     forward: bool = True,
-    start_feats: List = [],
+    start_feats: Optional[List] = None,
     start_score: Optional[float] = None,
     criterion: str = "roc_auc",
     stop_early: bool = True,
@@ -38,8 +38,8 @@ def stepwise_cv(
         a ``"feats"`` key listing available features.
     forward : bool, default True
         If True, perform forward selection; otherwise perform backward elimination.
-    start_feats : list, default []
-        Initial feature set.
+    start_feats : list, optional
+        Initial feature set. Defaults to an empty list.
     start_score : float or None, default None
         Baseline score for `start_feats`. If None, it is computed automatically.
     criterion : str, default "roc_auc"
@@ -53,6 +53,9 @@ def stepwise_cv(
         Sequential record of each step, including evaluated features,
         candidate features, and corresponding scores.
     """
+
+    if start_feats is None:
+        start_feats = []
 
     print(
         f"Stepwise CV: forward={forward}, start_feats={start_feats} (n={len(start_feats)}), start_score={start_score}"

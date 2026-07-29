@@ -47,3 +47,46 @@ def test_cross_validation_no_sweep_by_default(df_folds, conf, train_fn, predict_
 
     assert len(result) == 1
     assert "dummy_param" not in result.columns
+
+
+def test_cross_validation_cv_idx_basic_output_shape(
+    df_folds, conf, train_fn, predict_fn, eval_fn
+):
+    conf = {**conf, "cv_idx": [{"train": [0, 1], "test": [2, 3]}, {"train": [2, 3], "test": [4, 5]}]}
+    result = cross_validation(df_folds, train_fn, predict_fn, eval_fn, conf)
+
+    assert len(result) == 1
+    expected_cols = {"mean_pred", "mean_pred_fold0", "mean_pred_fold1"}
+    assert expected_cols.issubset(result.columns)
+
+
+def test_cross_validation_cv_idx_uses_positional_ranges(
+    df_folds, conf, predict_fn, eval_fn
+):
+    seen_train_x = []
+    seen_test_x = []
+
+    def train_fn(df_train, conf):
+        seen_train_x.append(list(df_train["x"]))
+        return {"mean_y": df_train[conf["target"]].mean()}
+
+    def predict_fn(fit, df_test, conf):
+        seen_test_x.append(list(df_test["x"]))
+        return [fit["mean_y"]] * len(df_test)
+
+    conf = {**conf, "cv_idx": [{"train": [0, 1], "test": [2, 3]}, {"train": [2, 3], "test": [4, 5]}]}
+    cross_validation(df_folds, train_fn, predict_fn, eval_fn, conf)
+
+    assert seen_train_x == [[1, 2], [3, 4]]
+    assert seen_test_x == [[3, 4], [5, 6]]
+
+
+def test_cross_validation_cv_idx_takes_precedence_over_fold_column(
+    df_folds, conf, train_fn, predict_fn, eval_fn
+):
+    conf = {**conf, "cv_idx": [{"train": [0, 1, 2], "test": [3, 4, 5]}]}
+    result = cross_validation(df_folds, train_fn, predict_fn, eval_fn, conf)
+
+    assert len(result) == 1
+    assert "mean_pred_fold1" not in result.columns
+    assert "mean_pred_fold0" in result.columns

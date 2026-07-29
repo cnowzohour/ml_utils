@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `cross_validation`: support for arbitrary train/test splits via `conf["cv_idx"]`, a list of `{"train": [...], "test": [...]}` dicts giving 0-based row positions per fold (via `df.iloc`). Enables rolling-window CV for time series. Takes precedence over the `df.fold` column when present; falls back to the existing `fold`-column logic otherwise, so existing workflows are unaffected.
+- `tests/test_cv.py`: tests for the `cv_idx` path covering output shape, correct positional train/test slicing, and precedence over the `fold` column
+
 ## [1.0.3] - 2026-07-29
 
 ### Fixed

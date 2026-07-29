@@ -200,18 +200,33 @@ def cross_validation(
     Run cross-validation and aggregate evaluation metrics across folds.
 
     Trains a model on all but one fold, evaluates on the held-out fold, and
-    repeats for all folds defined in ``df.fold``. Optionally evaluates multiple
-    prediction-time parameter values (e.g., number of trees) without retraining.
+    repeats for all folds. Optionally evaluates multiple prediction-time
+    parameter values (e.g., number of trees) without retraining.
+
+    Folds are defined in one of two ways:
+
+    - By default, folds are taken from a ``fold`` column on ``df``: for each
+      unique value, rows with that value are held out for testing and all
+      other rows are used for training.
+    - If ``conf["cv_idx"]`` is set, it takes precedence over the ``fold``
+      column. It must be a list of dicts, one per fold, each with keys
+      ``"train"`` and ``"test"`` giving the 0-based row positions (as used
+      by ``df.iloc``) to use for training and testing in that fold. This
+      supports arbitrary splits, e.g. rolling-window CV for time series,
+      where train/test ranges are chosen explicitly rather than derived
+      from a fold label.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Input data containing a ``fold`` column defining CV splits.
+        Input data. Must contain a ``fold`` column unless ``conf["cv_idx"]``
+        is provided.
     train_fn, predict_fn, eval_fn : Callable
         Training, prediction, and evaluation functions.
     conf : dict
         Configuration dictionary passed to training, prediction, and evaluation.
-        Must include a ``"target"`` key.
+        Must include a ``"target"`` key. May include a ``"cv_idx"`` key (see
+        above) to override ``fold``-column-based splitting.
     pred_param_name : str or None, optional
         Name of a prediction-time parameter to sweep without retraining
         (e.g. ``"n_trees"`` for XGBoost). Must be provided together with
@@ -235,11 +250,20 @@ def cross_validation(
     dfs_test = []
     dfs_eval = []
 
-    unique_folds = sorted(df.fold.unique())
-    for fold in unique_folds:
+    cv_idx = conf.get("cv_idx")
+    if cv_idx is not None:
+        folds = list(enumerate(cv_idx))
+    else:
+        folds = [(fold, None) for fold in sorted(df.fold.unique())]
+
+    for fold, idx in folds:
         print(f"Processing fold {fold}...")
-        df_train = df[df.fold != fold]
-        df_test = df[df.fold == fold]
+        if idx is not None:
+            df_train = df.iloc[idx["train"]]
+            df_test = df.iloc[idx["test"]]
+        else:
+            df_train = df[df.fold != fold]
+            df_test = df[df.fold == fold]
 
         fit = train_fn(df_train, conf)
 
@@ -264,13 +288,13 @@ def cross_validation(
     dfs_eval_joined = []
     for i_param, pred_param_value in enumerate(pred_param_values):
         df_test_all = pd.concat(
-            [dfs_test[i_fold][i_param] for i_fold in range(len(unique_folds))]
+            [dfs_test[i_fold][i_param] for i_fold in range(len(folds))]
         )
         df_eval_all = eval_fn(df_test_all, conf)
         # Concatenate columns from each fold, as well as the overall one
         df_eval = pd.concat(
             [df_eval_all]
-            + [dfs_eval[i_fold][i_param] for i_fold in range(len(unique_folds))],
+            + [dfs_eval[i_fold][i_param] for i_fold in range(len(folds))],
             axis=1,
         )
         if pred_param_value is not None:
